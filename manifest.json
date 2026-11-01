@@ -1,0 +1,10 @@
+{
+  "name": "Soft Dial PWA",
+  "short_name": "Soft Dial",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f6f9",
+  "theme_color": "#f47718",
+  "description": "Browser-based SIP/WebRTC softphone"
+}

@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f47718">
+<meta name="description" content="Soft Dial style SIP/WebRTC PWA softphone">
+<link rel="manifest" href="./manifest.json">
+<title>Soft Dial PWA</title>
+<style>
+:root{--orange:#f47718;--ink:#172033;--muted:#667085;--line:#e5e7eb;--bg:#f4f6f9;--green:#16834a;--red:#c62828}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px system-ui,-apple-system,"Noto Sans Bengali",sans-serif}
+header{background:var(--orange);color:white;padding:18px 18px 16px;position:sticky;top:0;z-index:3;box-shadow:0 2px 8px #0002}
+header h1{font-size:23px;margin:0}header small{opacity:.9}
+main{max-width:760px;margin:auto;padding:14px 14px 36px}
+.panel{background:#fff;border-radius:14px;padding:16px;margin:12px 0;box-shadow:0 2px 10px #14213d0c}
+h2{font-size:18px;margin:0 0 14px}h3{font-size:15px;color:var(--orange);margin:18px 0 8px}
+label{display:block;font-size:13px;font-weight:650;color:#596273;margin:11px 0 5px}
+input,select{width:100%;padding:12px;border:1px solid #cbd0d8;border-radius:8px;font:inherit;background:#fff;color:var(--ink)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.row{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+button{border:0;border-radius:9px;padding:12px 15px;font:700 15px system-ui;cursor:pointer;background:#e9edf5;color:var(--ink)}
+button.primary{background:var(--orange);color:#fff}button.green{background:var(--green);color:#fff}button.red{background:var(--red);color:#fff}
+button:disabled{opacity:.45;cursor:not-allowed}
+.status{padding:10px 12px;border-radius:9px;background:#f0f3f8;color:#485365;font-size:14px;overflow-wrap:anywhere}
+.status.ok{background:#e8f6ee;color:#176b3c}.status.bad{background:#fff0f0;color:#a51d1d}
+.dialdisplay{font-size:25px;letter-spacing:1px;text-align:center;padding:12px;min-height:58px;border-bottom:1px solid var(--line);overflow-wrap:anywhere}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;max-width:360px;margin:12px auto}
+.pad button{font-size:22px;background:#f0f2f6;padding:15px 8px;border-radius:50px}
+.pad button small{display:block;font-size:9px;color:#687386;font-weight:500}
+#log{background:#101828;color:#d1e3ff;padding:12px;border-radius:9px;white-space:pre-wrap;max-height:190px;overflow:auto;font:12px ui-monospace,monospace}
+.note{font-size:13px;color:var(--muted);line-height:1.5}.danger{color:#a51d1d}
+footer{text-align:center;color:#7a8494;font-size:12px;padding:12px}
+@media(max-width:480px){main{padding:10px}.panel{padding:14px}.grid{grid-template-columns:1fr 1fr}header h1{font-size:21px}}
+</style>
+</head>
+<body>
+<header><h1>Soft Dial</h1><small>SIP / WebRTC Softphone</small></header>
+<main>
+<section class="panel">
+ <div class="row" style="justify-content:space-between"><h2>Account Status</h2><button id="installBtn" hidden>Install App</button></div>
+ <div id="status" class="status">Not registered. Enter your SIP and WebSocket details below.</div>
+ <div class="row" style="margin-top:12px">
+  <button class="primary" id="registerBtn">TEST / REGISTER</button>
+  <button id="unregisterBtn" disabled>UNREGISTER</button>
+ </div>
+</section>
+
+<section class="panel">
+<h2>Edit Internet Call Account</h2>
+<label>Account Name</label><input id="accountName" value="Sarker_Communication" autocomplete="off">
+<div class="grid">
+ <div><label>SIP Username</label><input id="username" value="09649502833" autocomplete="username"></div>
+ <div><label>Authentication User (optional)</label><input id="authUser" placeholder="Leave blank if same as username"></div>
+</div>
+<label>Password</label><input id="password" type="password" autocomplete="current-password" placeholder="SIP password">
+<label>SIP Domain / Host</label><input id="domain" value="sip.sarkercommunication.com" autocomplete="off">
+<label>SIP URI (optional; auto-created if blank)</label><input id="sipUri" placeholder="sip:09649502833@sip.sarkercommunication.com">
+<h3>Connection / WebRTC</h3>
+<label>WebSocket Server URL (WSS) — required for browser calling</label>
+<input id="wsServer" placeholder="wss://your-provider.example.com:8089/ws" autocomplete="url">
+<div class="grid">
+ <div><label>Transport</label><select id="transport"><option value="WSS">WSS (browser)</option></select></div>
+ <div><label>Outbound Proxy (optional)</label><input id="proxy" placeholder="sip:proxy.example.com"></div>
+</div>
+<p class="note">Soft Dial-এর Android UDP সেটিং এখানে সরাসরি ব্যবহার করা যাবে না। আপনার SIP provider-এর WebSocket/WSS endpoint এবং WebRTC enablement জানতে provider-এর সহায়তা লাগতে পারে।</p>
+<div class="row"><button id="saveBtn">SAVE SETTINGS</button><button id="clearBtn">CLEAR SAVED SETTINGS</button></div>
+</section>
+
+<section class="panel">
+<h2>Dial Pad</h2>
+<div id="number" class="dialdisplay" aria-live="polite">Enter number</div>
+<div class="pad" id="pad">
+<button data-key="1">1<small>&nbsp;</small></button><button data-key="2">2<small>ABC</small></button><button data-key="3">3<small>DEF</small></button>
+<button data-key="4">4<small>GHI</small></button><button data-key="5">5<small>JKL</small></button><button data-key="6">6<small>MNO</small></button>
+<button data-key="7">7<small>PQRS</small></button><button data-key="8">8<small>TUV</small></button><button data-key="9">9<small>WXYZ</small></button>
+<button data-key="*">*</button><button data-key="0">0<small>+</small></button><button data-key="#">#</button>
+</div>
+<div class="row" style="justify-content:center">
+<button id="backspaceBtn">⌫</button><button class="green" id="callBtn" disabled>CALL</button><button class="red" id="hangupBtn" disabled>HANG UP</button>
+</div>
+<div class="row" style="justify-content:center;margin-top:10px">
+<button id="answerBtn" class="green" disabled>ANSWER</button><button id="rejectBtn" class="red" disabled>REJECT</button><button id="muteBtn" disabled> MUTE </button>
+</div>
+<div id="callStatus" class="status" style="margin-top:12px">No active call.</div>
+<audio id="remoteAudio" autoplay playsinline></audio>
+</section>
+
+<section class="panel">
+<h2>Call Log / Diagnostics</h2>
+<div class="row"><button id="clearLogBtn">CLEAR LOG</button><button id="copyLogBtn">COPY LOG</button></div>
+<pre id="log">App ready.</pre>
+</section>
+<section class="panel">
+<h2>Important</h2>
+<p class="note">এই PWA-র UI ও settings offline-এ খোলা যাবে। SIP registration এবং কলের জন্য ইন্টারনেট, HTTPS hosting, provider-supported SIP over WSS, WebRTC-compatible SIP account এবং microphone permission আবশ্যক। এই HTML অ্যাপ Android-এর native SIP/UDP engine নয়।</p>
+<p class="note danger">SIP password এই ডিভাইসের browser localStorage-এ রাখা হয়। শেয়ার করা বা পাবলিক ডিভাইসে Save করবেন না।</p>
+</section>
+<footer>Soft Dial PWA • Browser-based SIP/WebRTC</footer>
+</main>
+
+<script type="module">
+const $ = id => document.getElementById(id);
+const statusBox=$('status'), callStatus=$('callStatus'), logBox=$('log'), numberBox=$('number');
+let sip=null, ua=null, registerer=null, session=null, remoteStream=null, muted=false, incoming=false;
+let SIP=null;
+
+function log(message){const t=new Date().toLocaleTimeString();logBox.textContent+=`\\n[${t}] ${message}`;logBox.scrollTop=logBox.scrollHeight;}
+function setStatus(message,type=''){statusBox.textContent=message;statusBox.className='status '+type;}
+function setCallStatus(message,type=''){callStatus.textContent=message;callStatus.className='status '+type;}
+function getConfig(){return {
+ accountName:$('accountName').value.trim(), username:$('username').value.trim(),
+ authUser:$('authUser').value.trim(), password:$('password').value,
+ domain:$('domain').value.trim(), sipUri:$('sipUri').value.trim(),
+ wsServer:$('wsServer').value.trim(), proxy:$('proxy').value.trim()
+};}
+function saveConfig(){localStorage.setItem('softdial-config',JSON.stringify(getConfig()));log('Settings saved on this device.');}
+function loadConfig(){try{const c=JSON.parse(localStorage.getItem('softdial-config')||'{}');for(const k of Object.keys(c))if($(k))$(k).value=c[k];}catch(e){log('Could not load saved settings.');}}
+function identity(c){if(c.sipUri)return c.sipUri;return `sip:${c.username}@${c.domain}`;}
+function updateButtons(registered=false){$('registerBtn').disabled=registered;$('unregisterBtn').disabled=!registered;$('callBtn').disabled=!registered||!!session;}
+function attachRemoteAudio(s){
+ try{
+  const pc=s.sessionDescriptionHandler?.peerConnection;
+  if(!pc)return;
+  remoteStream=new MediaStream();
+  pc.getReceivers().forEach(r=>{if(r.track)remoteStream.addTrack(r.track);});
+  $('remoteAudio').srcObject=remoteStream;
+  $('remoteAudio').play().catch(e=>log('Audio playback needs a user gesture: '+e.message));
+ }catch(e){log('Remote audio setup error: '+e.message);}
+}
+function onSessionState(s){
+ const state=s.state;
+ log('Call state: '+state);
+ if(state==='Establishing')setCallStatus('Connecting…');
+ if(state==='Established'){setCallStatus('Call connected.');attachRemoteAudio(s);$('hangupBtn').disabled=false;$('muteBtn').disabled=false;$('answerBtn').disabled=true;$('rejectBtn').disabled=true;}
+ if(state==='Terminated'){setCallStatus('Call ended.');$('remoteAudio').srcObject=null;session=null;incoming=false;muted=false;$('muteBtn').textContent='MUTE';$('hangupBtn').disabled=true;$('muteBtn').disabled=true;$('answerBtn').disabled=true;$('rejectBtn').disabled=true;$('callBtn').disabled=!registerer;}
+}
+async function ensureSip(){
+ if(SIP)return SIP;
+ setStatus('Loading SIP library…');
+ const mod=await import('https://esm.sh/sip.js@0.21.2');
+ SIP=mod;return SIP;
+}
+$('registerBtn').addEventListener('click',async()=>{
+ const c=getConfig();
+ if(!c.username||!c.password||!c.domain||!c.wsServer){setStatus('Username, password, domain and WSS URL are required.','bad');return;}
+ if(!/^wss:\\/\\//i.test(c.wsServer)){setStatus('WebSocket URL must start with wss:// for secure PWA calling.','bad');return;}
+ $('registerBtn').disabled=true;
+ try{
+  const lib=await ensureSip();
+  const uri=lib.UserAgent.makeURI(identity(c));
+  if(!uri)throw new Error('Invalid SIP URI. Check username and domain.');
+  const options={
+   uri,
+   transportOptions:{server:c.wsServer},
+   authorizationUsername:c.authUser||c.username,
+   authorizationPassword:c.password,
+   userAgentString:'SoftDial-PWA/1.0',
+   delegate:{onInvite:inv=>{
+    if(session){log('Incoming call ignored: another session is active.');inv.reject();return;}
+    session=inv;incoming=true;setCallStatus('Incoming call. Press ANSWER.','ok');
+    $('answerBtn').disabled=false;$('rejectBtn').disabled=false;$('callBtn').disabled=true;
+    session.stateChange.addListener(()=>onSessionState(session));
+   }}
+  };
+  ua=new lib.UserAgent(options);
+  await ua.start();
+  registerer=new lib.Registerer(ua);
+  registerer.stateChange.addListener(st=>{log('Registration state: '+st);if(String(st)==='Registered'){setStatus('Registered: '+identity(c),'ok');updateButtons(true);}else if(String(st)==='Unregistered'){setStatus('Not registered.');updateButtons(false);}});
+  await registerer.register();
+  setStatus('Registration request sent. Waiting for provider response…');
+  log('SIP UserAgent started. WSS: '+c.wsServer);
+ }catch(e){setStatus('Register failed: '+e.message,'bad');log('REGISTER ERROR: '+(e.stack||e));$('registerBtn').disabled=false;}
+});
+$('unregisterBtn').addEventListener('click',async()=>{
+ try{if(registerer)await registerer.unregister();if(ua)await ua.stop();registerer=null;ua=null;setStatus('Unregistered.');updateButtons(false);log('Unregistered.');}
+ catch(e){log('Unregister error: '+e.message);setStatus(e.message,'bad');}
+});
+$('callBtn').addEventListener('click',async()=>{
+ const c=getConfig(), dest=$('number').dataset.value||'';
+ if(!registerer){setCallStatus('Register first.','bad');return;}
+ if(!dest){setCallStatus('Enter a destination number.','bad');return;}
+ try{
+  const lib=await ensureSip();
+  const target=lib.UserAgent.makeURI(dest.startsWith('sip:')?dest:`sip:${dest}@${c.domain}`);
+  if(!target)throw new Error('Invalid destination SIP URI.');
+  session=new lib.Inviter(ua,target,{});
+  session.stateChange.addListener(()=>onSessionState(session));
+  await session.invite();
+  setCallStatus('Calling '+dest+'…');$('callBtn').disabled=true;$('hangupBtn').disabled=false;
+  log('INVITE sent to '+target.toString());
+ }catch(e){session=null;setCallStatus('Call failed: '+e.message,'bad');log('CALL ERROR: '+(e.stack||e));$('callBtn').disabled=false;}
+});
+$('answerBtn').addEventListener('click',async()=>{
+ if(!session||!incoming)return;
+ try{await session.accept();$('answerBtn').disabled=true;$('rejectBtn').disabled=true;setCallStatus('Answering…');}
+ catch(e){log('Answer error: '+e.message);setCallStatus(e.message,'bad');}
+});
+$('rejectBtn').addEventListener('click',async()=>{if(session&&incoming){try{await session.reject();}catch(e){log(e.message);}}});
+$('hangupBtn').addEventListener('click',async()=>{
+ if(!session)return;
+ try{if(session.state==='Established')await session.bye();else if(incoming)await session.reject();else await session.cancel();}
+ catch(e){log('Hangup error: '+e.message);setCallStatus('Hangup error: '+e.message,'bad');}
+});
+$('muteBtn').addEventListener('click',()=>{
+ try{
+  const pc=session?.sessionDescriptionHandler?.peerConnection;if(!pc)throw new Error('Call media is not ready.');
+  muted=!muted;pc.getSenders().forEach(s=>{if(s.track&&s.track.kind==='audio')s.track.enabled=!muted;});
+  $('muteBtn').textContent=muted?'UNMUTE':'MUTE';setCallStatus(muted?'Microphone muted.':'Microphone active.');
+ }catch(e){log('Mute error: '+e.message);}
+});
+$('pad').addEventListener('click',e=>{const b=e.target.closest('button[data-key]');if(!b)return;const v=(numberBox.dataset.value||'')+b.dataset.key;numberBox.dataset.value=v;numberBox.textContent=v;});
+$('backspaceBtn').addEventListener('click',()=>{const v=(numberBox.dataset.value||'').slice(0,-1);numberBox.dataset.value=v;numberBox.textContent=v||'Enter number';});
+$('saveBtn').addEventListener('click',saveConfig);
+$('clearBtn').addEventListener('click',()=>{if(confirm('Remove saved SIP settings from this device?')){localStorage.removeItem('softdial-config');$('password').value='';log('Saved settings removed.');}});
+$('clearLogBtn').addEventListener('click',()=>logBox.textContent='Log cleared.');
+$('copyLogBtn').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(logBox.textContent);log('Log copied.');}catch(e){log('Clipboard unavailable.');}});
+loadConfig();
+if('serviceWorker' in navigator && location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').then(()=>log('Service worker registered.')).catch(e=>log('Service worker error: '+e.message));
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;$('installBtn').hidden=false;});
+$('installBtn').addEventListener('click',async()=>{if(!deferredPrompt)return;deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;$('installBtn').hidden=true;});
+window.addEventListener('appinstalled',()=>{$('installBtn').hidden=true;log('PWA installed.');});
+</script>
+</body>
+</html>
